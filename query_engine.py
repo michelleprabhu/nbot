@@ -7,10 +7,10 @@ import re
 
 class Chatbot:
     def __init__(self, uri, user, password, database="neo4j"):
-    """Initialize Neo4j connection"""
-    self.driver = GraphDatabase.driver(uri, auth=(user, password))
-    self.database = database
-    self.gemini_model = None
+        """Initialize Neo4j connection"""
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+        self.database = database
+        self.gemini_model = None
     
     # Configure Gemini API
     try:
