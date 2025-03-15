@@ -2,6 +2,7 @@ import streamlit as st
 from query_engine import Chatbot
 from document_processor import DocumentProcessor
 import time
+import google.generativeai as genai
 
 # Set page configuration
 st.set_page_config(
@@ -28,8 +29,19 @@ def get_chatbot():
 def get_processor():
     return DocumentProcessor(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
 
-chatbot = get_chatbot()
-processor = get_processor()
+# Check Gemini model availability
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def check_gemini_models():
+    try:
+        # Configure API - assuming API key is already set in secrets
+        if "gemini" in st.secrets and "api_key" in st.secrets["gemini"]:
+            genai.configure(api_key=st.secrets["gemini"]["api_key"])
+            models = genai.list_models()
+            return [m.name for m in models if 'generateContent' in m.supported_generation_methods]
+        return []
+    except Exception as e:
+        st.error(f"Error checking Gemini models: {str(e)}")
+        return []
 
 # App title and description
 st.title("🧠 Knowledge Graph Chatbot")
@@ -37,6 +49,14 @@ st.markdown("""
 Upload PDF documents and ask questions about their content. 
 The system will extract information and store it in a knowledge graph for intelligent retrieval.
 """)
+
+# Display available Gemini models (in expander to not clutter UI)
+with st.expander("🤖 API Model Status"):
+    available_models = check_gemini_models()
+    if available_models:
+        st.success(f"✅ Available Gemini models: {', '.join(available_models)}")
+    else:
+        st.warning("⚠️ No Gemini models detected. Check your API key configuration.")
 
 # Create two columns for layout
 col1, col2 = st.columns([1, 2])
@@ -66,6 +86,9 @@ with col1:
     st.subheader("System Status")
     try:
         with st.spinner("Checking connection..."):
+            chatbot = get_chatbot()
+            processor = get_processor()
+            
             with chatbot.driver.session() as session:
                 result = session.run("RETURN 1 as test").single()
                 if result and result["test"] == 1:
@@ -113,6 +136,7 @@ with col2:
             try:
                 with st.spinner("Thinking..."):
                     start_time = time.time()
+                    chatbot = get_chatbot()  # Ensure we have the latest chatbot instance
                     response_text = chatbot.chat(user_input)
                     end_time = time.time()
                     
