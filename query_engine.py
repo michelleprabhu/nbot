@@ -10,21 +10,44 @@ class Chatbot:
         """Initialize Neo4j connection"""
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
         self.database = database
+        self.gemini_model = None
         
         # Configure Gemini API
         try:
             GEMINI_API_KEY = st.secrets["gemini"]["api_key"]
             genai.configure(api_key=GEMINI_API_KEY)
             
-            # Verify API key by making a simple test call
+            # Check available models and select one
             try:
-                model = genai.GenerativeModel("gemini-1.0-pro")
+                available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                st.info(f"Available Gemini models: {available_models}")
+                
+                # Try these models in order of preference
+                preferred_models = ["gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]
+                
+                selected_model = None
+                for model_name in preferred_models:
+                    if model_name in available_models:
+                        selected_model = model_name
+                        break
+                
+                if not selected_model:
+                    # Use first available model that supports text generation
+                    selected_model = available_models[0] if available_models else "gemini-pro"
+                
+                st.success(f"✅ Using Gemini model: {selected_model}")
+                self.gemini_model = selected_model
+                
+                # Verify selected model works
+                model = genai.GenerativeModel(selected_model)
                 _ = model.generate_content("Test")
-                print("✅ Gemini API configured and tested successfully")
+                st.success("✅ Gemini API configured and tested successfully")
             except Exception as e:
-                print(f"⚠️ Gemini API test failed: {str(e)}")
+                st.error(f"⚠️ Gemini API test failed: {str(e)}")
+                # Fall back to a likely model
+                self.gemini_model = "gemini-pro"
         except Exception as e:
-            print(f"❌ Error configuring Gemini API: {str(e)}")
+            st.error(f"❌ Error configuring Gemini API: {str(e)}")
 
     def close(self):
         """Close Neo4j connection"""
@@ -184,8 +207,8 @@ class Chatbot:
                 # Look for patterns where the acronym might be defined
                 # e.g., "All Star Driver Education (ASDE)"
                 chunks = []
-                pattern1 = re.compile(r'([A-Za-z\s]+)\s*$$' + re.escape(acronym) + r'$$', re.IGNORECASE)
-                pattern2 = re.compile(r'([A-Za-z\s]+)\s*$$' + ''.join([f'{c}[A-Za-z]*' for c in acronym]) + r'$$', re.IGNORECASE)
+                pattern1 = re.compile(r'([A-Za-z\s]+)\s*\(' + re.escape(acronym) + r'\)', re.IGNORECASE)
+                pattern2 = re.compile(r'([A-Za-z\s]+)\s*\(' + ''.join([f'{c}[A-Za-z]*' for c in acronym]) + r'\)', re.IGNORECASE)
                 
                 for record in all_results:
                     text = record["text"]
@@ -281,8 +304,12 @@ class Chatbot:
                         }
                     ]
                     
+                    # Use the model name selected during initialization
+                    model_name = self.gemini_model if self.gemini_model else "gemini-pro"
+                    st.info(f"Using Gemini model: {model_name}")
+                    
                     model = genai.GenerativeModel(
-                        model_name="gemini-1.0-pro",  # Use the full model name
+                        model_name=model_name,
                         generation_config=generation_config,
                         safety_settings=safety_settings
                     )
