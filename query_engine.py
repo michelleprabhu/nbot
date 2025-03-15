@@ -16,14 +16,14 @@ class Chatbot:
             GEMINI_API_KEY = st.secrets["gemini"]["api_key"]
             genai.configure(api_key=GEMINI_API_KEY)
 
-            # Fetch available models
-            available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            # Fetch available models (Removing 'models/' prefix from names)
+            available_models = [m.name.split('/')[-1] for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
 
             if not available_models:
                 raise ValueError("No Gemini models are available. Check API key configuration.")
 
             # Select from supported models ONLY
-            preferred_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-pro"]
+            preferred_models = ["gemini-2.0-flash", "gemini-2.0-pro-exp", "gemini-1.5-flash", "gemini-1.5-pro"]
             selected_model = next((m for m in preferred_models if m in available_models), None)
 
             if not selected_model:
@@ -39,7 +39,7 @@ class Chatbot:
 
         except Exception as e:
             st.error(f"⚠️ Gemini API setup failed: {str(e)}")
-            self.gemini_model = "gemini-1.5-flash"  # Default fallback
+            self.gemini_model = "gemini-2.0-flash"  # Default fallback
 
     def close(self):
         """Close Neo4j connection"""
