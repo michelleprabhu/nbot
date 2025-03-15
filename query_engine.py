@@ -7,47 +7,47 @@ import re
 
 class Chatbot:
     def __init__(self, uri, user, password, database="neo4j"):
-        """Initialize Neo4j connection"""
-        self.driver = GraphDatabase.driver(uri, auth=(user, password))
-        self.database = database
-        self.gemini_model = None
+    """Initialize Neo4j connection"""
+    self.driver = GraphDatabase.driver(uri, auth=(user, password))
+    self.database = database
+    self.gemini_model = None
+    
+    # Configure Gemini API
+    try:
+        GEMINI_API_KEY = st.secrets["gemini"]["api_key"]
+        genai.configure(api_key=GEMINI_API_KEY)
         
-        # Configure Gemini API
+        # Check available models and select one
         try:
-            GEMINI_API_KEY = st.secrets["gemini"]["api_key"]
-            genai.configure(api_key=GEMINI_API_KEY)
+            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            st.info(f"Available Gemini models: {available_models}")
             
-            # Check available models and select one
-            try:
-                available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                st.info(f"Available Gemini models: {available_models}")
-                
-                # Try these models in order of preference
-                preferred_models = ["gemini-1.5-pro", "gemini-pro", "gemini-1.0-pro"]
-                
-                selected_model = None
-                for model_name in preferred_models:
-                    if model_name in available_models:
-                        selected_model = model_name
-                        break
-                
-                if not selected_model:
-                    # Use first available model that supports text generation
-                    selected_model = available_models[0] if available_models else "gemini-pro"
-                
-                st.success(f"✅ Using Gemini model: {selected_model}")
-                self.gemini_model = selected_model
-                
-                # Verify selected model works
-                model = genai.GenerativeModel(selected_model)
-                _ = model.generate_content("Test")
-                st.success("✅ Gemini API configured and tested successfully")
-            except Exception as e:
-                st.error(f"⚠️ Gemini API test failed: {str(e)}")
-                # Fall back to a likely model
-                self.gemini_model = "gemini-pro"
+            # Try these models in order of preference - UPDATED to prefer newer models
+            preferred_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro", "gemini-pro-latest"]
+            
+            selected_model = None
+            for model_name in preferred_models:
+                if model_name in available_models:
+                    selected_model = model_name
+                    break
+            
+            if not selected_model:
+                # Use first available model that supports text generation
+                selected_model = available_models[0] if available_models else "gemini-1.5-flash"
+            
+            st.success(f"✅ Using Gemini model: {selected_model}")
+            self.gemini_model = selected_model
+            
+            # Verify selected model works
+            model = genai.GenerativeModel(selected_model)
+            _ = model.generate_content("Test")
+            st.success("✅ Gemini API configured and tested successfully")
         except Exception as e:
-            st.error(f"❌ Error configuring Gemini API: {str(e)}")
+            st.error(f"⚠️ Gemini API test failed: {str(e)}")
+            # Fall back to a newer recommended model
+            self.gemini_model = "gemini-1.5-flash"
+    except Exception as e:
+        st.error(f"❌ Error configuring Gemini API: {str(e)}")
 
     def close(self):
         """Close Neo4j connection"""
