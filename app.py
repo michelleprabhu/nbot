@@ -29,6 +29,10 @@ def get_chatbot():
 def get_processor():
     return DocumentProcessor(uri=NEO4J_URI, user=NEO4J_USER, password=NEO4J_PASSWORD)
 
+# Initialize these objects early
+chatbot = get_chatbot()
+processor = get_processor()
+
 # Check Gemini model availability
 @st.cache_data(ttl=3600)  # Cache for 1 hour
 def check_gemini_models():
@@ -86,9 +90,6 @@ with col1:
     st.subheader("System Status")
     try:
         with st.spinner("Checking connection..."):
-            chatbot = get_chatbot()
-            processor = get_processor()
-            
             with chatbot.driver.session() as session:
                 result = session.run("RETURN 1 as test").single()
                 if result and result["test"] == 1:
@@ -136,7 +137,6 @@ with col2:
             try:
                 with st.spinner("Thinking..."):
                     start_time = time.time()
-                    chatbot = get_chatbot()  # Ensure we have the latest chatbot instance
                     response_text = chatbot.chat(user_input)
                     end_time = time.time()
                     
