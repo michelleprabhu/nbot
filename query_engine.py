@@ -1,6 +1,5 @@
 import streamlit as st
 from neo4j import GraphDatabase
-import json
 import google.generativeai as genai
 import time
 import re
@@ -18,13 +17,13 @@ class Chatbot:
             genai.configure(api_key=GEMINI_API_KEY)
 
             # Fetch available models
-            available_models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+            available_models = [m.name.replace('models/', '') for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
 
             if not available_models:
                 raise ValueError("No Gemini models are available. Check API key configuration.")
 
             # Select from supported models ONLY
-            preferred_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro"]
+            preferred_models = ["gemini-1.5-flash", "gemini-1.5-pro", "gemini-2.0-flash", "gemini-2.0-pro"]
             selected_model = next((m for m in preferred_models if m in available_models), None)
 
             if not selected_model:
